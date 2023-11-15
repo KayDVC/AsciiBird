@@ -76,13 +76,13 @@ TestPlayerInEnvironment PROC USES edx eax
     call SetupBackground
     call SetupPlayer
 
-    mov ecx, 30h
+    mov ecx, 70h
     TestPlayerMovementLoop:
         
         call ReadKey    ; read input, non-blocking
         call MovePlayer
 
-        mov eax, 064h ; wait .1 seconds
+        mov eax, 064h ; wait .1 seconds between loops
 		call Delay
 
         loop TestPlayerMovementLoop ; run certain amount before quiting.
@@ -92,20 +92,67 @@ TestPlayerInEnvironment PROC USES edx eax
 
 TestPlayerInEnvironment ENDP
 
+; Tests the initial obstacle generation.
 TestObstacleCreation PROC
     
+    call SetupBackground    ; data initialized here is required for starting obstacles.
     call SetupObstacles
 
+    call ResetBackground
     ret
 TestObstacleCreation ENDP
+
+; Tests the movement logic for obstacles.
+TestObstacleMovement PROC
+    call SetupBackground    ; data initialized here is required for starting obstacles.
+    call SetupObstacles
+
+    mov ecx, 03E8h
+    TestObstacleMovementLoop:
+        
+        call MoveObstacles
+
+        mov eax, 064h ; wait .1 seconds between loops
+        call Delay
+
+        loop TestObstacleMovementLoop
+
+    call ResetBackground
+    ret
+
+TestObstacleMovement ENDP
+
+; Tests the player movement with obstacle movement
+TestPlayerWithObstacles PROC 
+    call SetupBackground    ; data initialized here is required for starting obstacles.
+    call SetupObstacles
+    call SetupPlayer
+
+       
+        TestPlayerWithObstacleLoop:
+        
+        call MoveObstacles
+        call ReadKey
+        call MovePlayer
+
+        mov eax, 064h ; wait .1 seconds between loops
+        call Delay
+
+        loop TestPlayerWithObstacleLoop
+
+    call ResetBackground
+    ret
+TestPlayerWithObstacles ENDP
 
 TestMain PROC PUBLIC
     
     ;call TestBackground
     ;call TestGenerateRandomNumberMacro
     ;call TestPlayerMovement
-    call TestPlayerInEnvironment
+    ;call TestPlayerInEnvironment
     ;call TestObstacleCreation
+    ;call TestObstacleMovement
+    call TestPlayerWithObstacles
 
     INVOKE ExitProcess, 0
 

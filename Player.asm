@@ -25,10 +25,10 @@ DrawPlayer PROC USES eax
 .code
 
 	; clear and redraw player.
-	; mReplaceChar OFFSET prev_pos, esi, PLAYER
+	;mReplaceChar OFFSET prev_pos, esi, PLAYER
 
-	; clear character at prev position
-    mov esi, OFFSET prev_pos
+
+	mov esi, OFFSET prev_pos
     mov dh, (Coords PTR [esi]).y
     mov dl, (Coords PTR [esi]).x
     call GoToXY

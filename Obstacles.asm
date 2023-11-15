@@ -18,54 +18,6 @@ obstacle_height BYTE ?
 
 .code
 
-;------------------Private Macros----------------------------------
-
-; Creates a vertical line with variable sized gap.
-mCreateObstacleStr MACRO str_address:REQ, break_offset:REQ, break_len:REQ, total_len:REQ
-    LOCAL AppendLine, AppendBreak, Next, LINE_SYMBOL, BREAK_SYMBOL
-.data
-    LINE_SYMBOL EQU <"|">
-    BREAK_SYMBOL EQU <" ">
-
-.code
-
-    push ecx
-    push edx
-
-    mov edx, 01h ; used in loop logic.
-
-    ;; create first section of chars.
-    movzx ecx, break_offset
-    AppendLine:
-        mov BYTE PTR [esi], LINE_SYMBOL
-        inc esi
-        loop AppendLine
-
-    cmp edx, 00h    ;; break out of macro if edx cleared.
-    je  Next
-
-    movzx ecx, break_len
-    AppendBreak:
-        mov BYTE PTR [esi], BREAK_SYMBOL
-        inc esi
-        loop AppendBreak
-
-    ;; calculate remaining lines to be added.
-    movzx ecx, total_len
-    movzx eax, break_offset
-    sub ecx, eax
-    movzx eax, break_len
-    sub ecx, eax
-    
-    mov edx, 00h ; exit macro when complete.
-    jmp AppendLine
-
-    Next:
-        pop edx
-        pop ecx
-
-ENDM
-
 ;------------------Private Procedures--------------------------------
 
 CalculateBreakBounds PROC USES eax ebx
@@ -101,7 +53,7 @@ CalculateObstacleEndPoints PROC USES eax
 ; Requires: Shared variable `bg_size_` instantiated.
 ;---------------------------------------------------------
 .data
-    LEFT_OFFSET     EQU LEFT_LIMIT + 10h
+    LEFT_OFFSET     EQU LEFT_LIMIT + 1Ah
     TOP_OFFSET      EQU TOP_LIMIT + 01h
     right_max       BYTE ?
     next_left_offset BYTE ? 
@@ -128,7 +80,6 @@ CalculateObstacleEndPoints PROC USES eax
 
     ; calculate y-delta and save.
     mov al, bottom_border_start.y
-    sub al, 01h 
     sub al, TOP_OFFSET
     mov obstacle_height, al
     
@@ -136,7 +87,7 @@ CalculateObstacleEndPoints PROC USES eax
 
 CalculateObstacleEndpoints ENDP
 
-GenerateRandomBreakOffset PROC
+GenerateRandomBreakOffset PROC USES edx eax
 
 .data
     ; temp data; not valid across procedure runs
@@ -144,12 +95,12 @@ GenerateRandomBreakOffset PROC
 .code
 
     mGenerateRandomInteger MIN_BREAK_OFFSET, max_break_offset
-    mov t_break_offset, 0Ch
+    mov t_break_offset, dl
 
     ret
 GenerateRandomBreakOffset ENDP
 
-GenerateRandomBreakLen PROC
+GenerateRandomBreakLen PROC USES edx eax
 
 .data
     ; temp data; not valid across procedure runs
@@ -157,7 +108,7 @@ GenerateRandomBreakLen PROC
 .code
 
     mGenerateRandomInteger MIN_BREAK_LEN, max_break_len
-    mov t_break_len, 03h
+    mov t_break_len, dl
 
     ret
 GenerateRandomBreakLen ENDP
@@ -167,7 +118,7 @@ CreateObstacle PROC USES ebx eax ecx
 ;
 ; Writes the top and bottom borders to the console.
 ;
-; Receives: EDX - the offset of the obstacle's string.
+; Receives: ESI - the offset of the obstacle's string.
 ; Returns: Nothing.
 ; Requires: Irvine Lib.
 ;---------------------------------------------------------
@@ -181,21 +132,17 @@ CreateObstacle PROC USES ebx eax ecx
     call GenerateRandomBreakOffset
     call GenerateRandomBreakLen
 
-    ; create string for obstacle.
-    mov al, bg_size_.rows
-    sub al, 02h
-
     mov edx, 01h ; used in loop logic.
 
-    ;; create first section of chars.
+    ; create first section of chars.
     movzx ecx, t_break_offset
     AppendLine:
         mov BYTE PTR [esi], LINE_SYMBOL
         inc esi
         loop AppendLine
 
-    cmp edx, 00h    ;; break out of macro if edx cleared.
-    je  Next
+    cmp edx, 00h    ; break out of macro if edx cleared.
+    je  Return
 
     movzx ecx, t_break_len
     AppendBreak:
@@ -203,18 +150,17 @@ CreateObstacle PROC USES ebx eax ecx
         inc esi
         loop AppendBreak
 
-    ;; calculate remaining lines to be added.
-    movzx ecx, al
+    ; calculate remaining lines to be added.
+    movzx ecx, obstacle_height
     movzx eax, t_break_offset
     sub ecx, eax
     movzx eax, t_break_len
     sub ecx, eax
     
-    mov edx, 00h ; exit macro when complete.
+    mov edx, 00h ; jmp to procedure exit when done
     jmp AppendLine
 
-    Next:
-    ;mCreateObstacleStr esi, t_break_offset, t_break_len, al
+    Return:
         ret
 
 CreateObstacle ENDP
@@ -232,31 +178,61 @@ DrawObstacle PROC USES edi eax ecx edx
 ;---------------------------------------------------------
 .data
     ; temp data; not valid across procedure runs
-    t_coords Coords <>
+    t_old_coords Coords <>
+    t_new_coords Coords <>
 .code
     
+    ; copy current location
+    mov al, TOP_LIMIT
+    mov t_old_coords.y, al
+    mov al, (Coords PTR [esi]).x
+    mov t_old_coords.x, al
+    
 
-    mov t_coords.y, TOP_LIMIT
+    mov t_new_coords.y, TOP_LIMIT
     ; print all chars on column - 1.
     mov al, (Coords PTR [esi]).x
     sub al, 01h
-    mov t_coords.x, al
 
-    ; only between the borders.
-    movzx ecx, obstacle_height
-    DrawChar:
-        ; print char on next row.
-        mov al, t_coords.y
-        sub al, 01h
-        mov t_coords.y, al
+    ; generate new obstacle at rightmost column if current obstacle runs out of bounds.
+    cmp al, LEFT_LIMIT
+    jae Draw
+
+    mov al, bottom_border_end.x
+    sub al, 01h
+
+    push esi
+    mov esi, edi
+    call CreateObstacle
+    pop esi
+
+    Draw:
+        mov t_new_coords.x, al
+
+        ; only between the borders.
+        movzx ecx, obstacle_height
+        DrawChar:
+            ; grab next char for erasure.
+            mov al, t_old_coords.y
+            add al, 01h
+            mov t_old_coords.y, al
+            
+            ; print char on next row.
+            mov al, t_new_coords.y
+            add al, 01h
+            mov t_new_coords.y, al
         
-        ; print char
-        mReplaceChar esi, OFFSET t_coords, [edi]
+            ; print char
+            mReplaceChar OFFSET t_old_coords, OFFSET t_new_coords, [edi]
 
-        ; grab next char in string
-        inc edi
-        loop DrawChar
-
+            ; grab next char in string
+            inc edi
+            loop DrawChar
+    
+    ; save obstacle at new x-coord.
+    mov al, t_new_coords.x
+    mov (Coords PTR [esi]).x, al 
+    
     ret
 
 DrawObstacle ENDP
@@ -264,15 +240,14 @@ DrawObstacle ENDP
 
 ;------------------Public Procedures---------------------------------
 
-SetupObstacles PROC PUBLIC USES esi edi
+SetupObstacles PROC PUBLIC USES esi eax
 ;
 ; Creates a initial obstacles and prints to console.
 ;
 ; Receives: Nothing.
-; Returns: EAX = 1 if setup successful, 0 otherwise.
+; Returns: Nothing.
 ; Requires: Irvine Lib. Shared variable `bg_size_` be
-;           instantiated and within min/max bounds
-;           as defined.
+;           instantiated.
 ;---------------------------------------------------------
 
 .code 
@@ -285,9 +260,31 @@ SetupObstacles PROC PUBLIC USES esi edi
     ; create the string representation of starting obstacles.
     mov esi, OFFSET obs_one
     call CreateObstacle
+
+    ; wait a .5 seconds to ensure RNG is somewhat random.
+    mov eax, 01F4h
+    call Delay
+
     mov esi, OFFSET obs_two
     call CreateObstacle
 
+    call MoveObstacles
+
+    ret
+SetupObstacles ENDP
+
+;---------------------------------------------------------
+MoveObstacles PROC PUBLIC USES esi edi
+;
+; Shifts all obstacles left in the console. Creates new
+; obstacles if obstacle goes past border.
+;
+; Receives: Nothing.
+; Returns: Nothing.
+; Requires: Irvine Lib. Shared variable `bg_size_` be
+;           instantiated.
+;---------------------------------------------------------
+    
     ; draw obstacles to screen.
     mov esi, OFFSET obs_one_start
     mov edi, OFFSET obs_one
@@ -298,7 +295,7 @@ SetupObstacles PROC PUBLIC USES esi edi
     call DrawObstacle
 
     ret
-SetupObstacles ENDP
+MoveObstacles ENDP
  
 
 

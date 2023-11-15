@@ -19,14 +19,22 @@ mCheckBounds MACRO min:REQ, max:REQ, val:REQ
 ;;---------------------------------------------------------
 
     LOCAL Next, OutOfBounds, InBounds
+
+    push edx
     
     ;; check bounds.
     movzx eax, val
 
-    cmp eax, DWORD PTR min
+    mov dl, min
+    movzx edx, dl
+
+    cmp eax, edx
     jb  OutOfBounds
 
-    cmp eax, DWORD PTR max
+    mov dl, max
+    movzx edx, dl
+
+    cmp eax, edx
     ja OutOfBounds
 
     jmp InBounds
@@ -39,6 +47,7 @@ mCheckBounds MACRO min:REQ, max:REQ, val:REQ
         jmp Next
 
     Next:
+        pop edx
 
 ENDM
 
@@ -92,22 +101,25 @@ mGenerateRandomInteger MACRO min:REQ, max:REQ
 ;;---------------------------------------------------------
     LOCAL Fail, Next
 
-    ;; ensure max not less than min (& vice versa).
-    ;;movzx edx, max
-    ;;cmp edx, DWORD PTR min
-    ;;jb Fail
+    ;; ensure max is not less than min (& vice versa)
+    movzx eax, max
+    mov   dl, min   ; hack to support both constants and byte variables.
+    movzx edx, dl
+    cmp eax, edx
+    jb Fail
 
-    push ebx ;; register used during division.
 
-    ;; use Windows API
-    call GetTickCount
+    sub eax, edx    ;; ensure generated value will always be at least min.
 
-    ;; use (modulo) division to get random number. Result should always be 1 byte.
-    mov dx, 00h ;; avoid division overflow
-    movzx bx, max 
-    sub bx, WORD PTR min ;; add back in later to ensure result will always be above min.
-    div bx
-    add dx, WORD PTR min
+    ;; re-seed and get random number
+    call Randomize  
+    call RandomRange
+
+    ;; ensure random number is fully between bounds including max bound.
+    inc eax
+    add eax, edx
+
+    mov edx, eax    ; random number will always fit in one byte.
 
     ;; ensure psuedo-random number is within bounds.
     mCheckBounds min, max, dl
@@ -116,7 +128,6 @@ mGenerateRandomInteger MACRO min:REQ, max:REQ
     Fail: 
         mProcResult FALSE
     Next:
-        pop ebx
 ENDM
 
 mFillString MACRO address:REQ, char:REQ, len:REQ

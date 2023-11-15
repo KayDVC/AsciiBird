@@ -16,6 +16,8 @@ WriteDec        PROTO                   ; EAX: Decimal to write
 WaitMsg         PROTO                   ; display wait message at current location, wait for Enter key
 Delay           PROTO                   ; EAX: milliseconds to delay process for
 ReadKey         PROTO                   ; Returns key in AH if available
+Randomize       PROTO
+RandomRange     PROTO                   ; EAX: maximum range
 
 
 ; Prototypes for public procedures.
@@ -28,10 +30,9 @@ ResetBackground PROTO
 SetupPlayer     PROTO
 MovePlayer      PROTO
 
-
 ; Obstacles.asm
 SetupObstacles  PROTO
-
+MoveObstacles   PROTO
 
 
 ; Structs

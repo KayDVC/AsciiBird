@@ -7,16 +7,13 @@ GAME_HEIGHT EQU 15h
 bg_size_ Dimensions <GAME_WIDTH, GAME_HEIGHT>
 
 .code
-main PROC PUBLIC
-    ; draw borders and title.
-    call SetupBackground
+Main PROC PUBLIC
+    
+    call SetupGame
 
-    ; draw starting obstacles
+    call RunGameLoop
 
-    ; revert to default console colors and clear console.
-    Quit:
-        call ResetBackground
     INVOKE ExitProcess, 0
-main ENDP
+Main ENDP
 
-END main
+END Main

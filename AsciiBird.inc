@@ -15,6 +15,7 @@ WriteString     PROTO                   ; EDX: offset string
 WriteDec        PROTO                   ; EAX: Decimal to write
 WaitMsg         PROTO                   ; display wait message at current location, wait for Enter key
 Delay           PROTO                   ; EAX: milliseconds to delay process for
+ReadChar        PROTO                   ; AL: character read. Blocking.
 ReadKey         PROTO                   ; Returns key in AH if available
 Randomize       PROTO
 RandomRange     PROTO                   ; EAX: maximum range
@@ -33,6 +34,13 @@ MovePlayer      PROTO
 ; Obstacles.asm
 SetupObstacles  PROTO
 MoveObstacles   PROTO
+CheckIntersection PROTO                 ; ESI - the offset of the coordinates of the object to check.
+
+; GameState.asm
+SetupGame       PROTO
+UpdateScore     PROTO
+RunGameLoop     PROTO
+GameOver        PROTO
 
 
 ; Structs
@@ -68,4 +76,6 @@ EXTERNDEF bottom_border_start:  Coords      ; defined in Background.asm
 EXTERNDEF bottom_border_end:    Coords      ;           |
 EXTERNDEF top_border_start:     Coords      ;           |
 EXTERNDEF top_border_end:       Coords      ;          <->
+
+
 

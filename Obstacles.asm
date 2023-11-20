@@ -5,8 +5,11 @@ Include AsciiBird.inc
 MIN_OBSTACLE_GAP    EQU 15h
 MIN_BREAK_LEN       EQU 02h 
 MIN_BREAK_OFFSET    BYTE 03h 
-max_break_len       BYTE 05h
+max_break_len       BYTE 06h
 max_break_offset    BYTE ?
+
+LINE_SYMBOL EQU <"|">
+BREAK_SYMBOL EQU <" ">
 
 obs_one BYTE MAX_BG_H DUP(0)
 obs_two BYTE MAX_BG_H DUP(0)
@@ -63,7 +66,7 @@ CalculateObstacleEndPoints PROC USES eax
     mov obs_one_start.y, TOP_OFFSET
     mov obs_two_start.y, TOP_OFFSET
 
-    t_x = LEFT_OFFSET + 01h  ; initial draw will subtract 1 from x value.
+    t_x = LEFT_OFFSET + 01h     ; initial draw will subtract 1 from x value.
     mov obs_one_start.x, t_x
 
     ; calculate remaining 'x' coordinates.
@@ -75,7 +78,7 @@ CalculateObstacleEndPoints PROC USES eax
     mov next_left_offset, al
     mGenerateRandomInteger next_left_offset, right_max
 
-    add dl, 01h             ; initial draw will subtract 1 from x value.
+    add dl, 01h                 ; initial draw will subtract 1 from x value.
     mov obs_two_start.x, dl
 
     ; calculate y-delta and save.
@@ -122,17 +125,12 @@ CreateObstacle PROC USES ebx eax ecx
 ; Returns: Nothing.
 ; Requires: Irvine Lib.
 ;---------------------------------------------------------
-.data
-    LINE_SYMBOL EQU <"|">
-    BREAK_SYMBOL EQU <" ">
-
-.code
 
     ; get randomized break offset and length.
     call GenerateRandomBreakOffset
     call GenerateRandomBreakLen
 
-    mov edx, 01h ; used in loop logic.
+    mov edx, 01h    ; used in loop logic.
 
     ; create first section of chars.
     movzx ecx, t_break_offset
@@ -157,7 +155,7 @@ CreateObstacle PROC USES ebx eax ecx
     movzx eax, t_break_len
     sub ecx, eax
     
-    mov edx, 00h ; jmp to procedure exit when done
+    mov edx, 00h    ; jmp to procedure exit when done
     jmp AppendLine
 
     Return:
@@ -237,6 +235,75 @@ DrawObstacle PROC USES edi eax ecx edx
 
 DrawObstacle ENDP
 
+;---------------------------------------------------------
+ObjectThroughObstacle PROC USES esi edi edx ecx
+;
+; Checks if an object is going through an obstacle.
+;
+; Receives: AL - the y value of the object to check,
+; EDI - the string of the obstacle to check.
+; Returns: Nothing. Ends game if object hit.
+; Requires: Nothing.
+;---------------------------------------------------------
+    
+.data
+    ; temp data; not valid across procedure runs
+    t_index DWORD ?
+
+.code
+    
+    ; only check the actual maximum height of obstacle's string.
+    movzx ecx, obstacle_height
+    mov t_index, ecx
+
+    ; bound obstacle y value between 1 and obstacle_height.
+    sub al, TOP_LIMIT
+    sub al, 02h         ; 1 (size of border) + 1 (zero-index)
+    movzx edx, al
+
+    mov al, BREAK_SYMBOL
+    cld                 ; clear direction flag
+    repne scasb
+    dec edi 
+
+    ; find position and compare of first break vs the position of the obstacle.
+    mov eax, t_index
+    sub eax, ecx
+    sub eax, 01h        ; zero-index
+    mov t_index, eax
+    cmp edx, t_index 
+    jb  Hit           ; obstacle hitting line above break
+
+    push ecx
+    movzx ecx, obstacle_height
+    mov t_index, ecx
+    pop ecx
+
+    inc ecx             ; account for extraneous loop.
+    mov al, LINE_SYMBOL ; search for line symbol.
+    cld                 ; clear direction flag.
+    repne scasb
+    dec edi
+
+    ; find position and compare of last break vs the position of the obstacle.
+    mov eax, t_index
+    sub eax, ecx
+    sub eax, 01h        ; zero-index
+    mov t_index, eax
+    cmp edx, t_index 
+    jae Hit             ; obstacle hitting line below break.
+
+    jmp Next
+
+    Hit:
+         call GameOver
+
+    Next:
+        ret
+
+ObjectThroughObstacle ENDP
+
+
 
 ;------------------Public Procedures---------------------------------
 
@@ -296,7 +363,45 @@ MoveObstacles PROC PUBLIC USES esi edi
 
     ret
 MoveObstacles ENDP
- 
+
+;---------------------------------------------------------
+CheckIntersection PROC PUBLIC USES esi edx edi
+;
+; Verifies object at coordinates provided not intersecting
+; with obstacle.
+;
+; Receives: ESI - the offset of the coordinates of the object
+; to check.
+; Returns: EAX - 1 if object intersecting through "open" section
+; of obstacles. 0 if object is not intersecting with any obstacles.
+; Requires: Nothing.
+;---------------------------------------------------------
+    
+    mov dl, (Coords PTR [esi]).x
+
+    ; check obstacle one
+    mov edi, OFFSET obs_one
+    cmp dl, obs_one_start.x
+    je CheckThrough
+
+    ; Check obstacle two
+    mov edi, OFFSET obs_two
+    cmp dl, obs_two_start.x
+    je CheckThrough
+
+    jmp NotIntersecting
+
+    CheckThrough:
+        mov al, (Coords PTR [esi]).y
+        call ObjectThroughObstacle ; does not return if object hits obstacle
+        mProcResult TRUE
+        ret
+
+    NotIntersecting:
+        mProcResult FALSE
+        ret
+
+CheckIntersection ENDP
 
 
 END

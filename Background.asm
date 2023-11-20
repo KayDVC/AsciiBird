@@ -48,7 +48,7 @@ CalculateBorderEndPoints PROC USES eax
 ;
 ; Receives: Nothing.
 ; Returns: Nothing.
-; Requires: Shared variable `bg_size_` instantiated.
+; Requires: Nothing.
 ;---------------------------------------------------------
     
     ; set givens.
@@ -84,7 +84,7 @@ WriteTitle PROC USES eax edx ebx
 ;
 ; Receives: Nothing.
 ; Returns: Nothing.
-; Requires: Irvine Lib.
+; Requires: Irvine Lib. Shared variable `bg_size_` instantiated.
 ;---------------------------------------------------------
 .data
     game_title BYTE "ASCII BIRD", 0

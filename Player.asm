@@ -2,61 +2,51 @@ Include AsciiBird.inc
 
 .data
 PLAYER EQU <"^">
-prev_pos Coords <LEFT_LIMIT+1, TOP_LIMIT+1>	; matching to start
+curr_pos Coords <LEFT_LIMIT+1, TOP_LIMIT+1>	; matching to start
 new_pos Coords <LEFT_LIMIT+1, TOP_LIMIT+1>
 
 .code
 
 ;------------------Private Procedures--------------------------------
 
-DrawPlayer PROC USES eax
+DrawPlayer PROC USES eax 
 ;
 ; Redraws player avatar in new location.
 ;
-; Receives: ESI - the offset to a coordinate struct specifying 
-; the new location to place the player's avatar.
+; Receives: Nothing.
 ; Returns: Nothing.
-; Requires: Nothing.
+; Requires: Irvine Lib.
+; Note: Checks obstacle intersection before drawing.
 ;---------------------------------------------------------
 
 .data
     BLANK_SYMBOL EQU <" ">
-
 .code
+	
+	; verify player not hitting obastacle.
+	mov esi, OFFSET new_pos
+	call CheckIntersection
+	cmp eax, FALSE
+	je Draw
 
-	; clear and redraw player.
-	;mReplaceChar OFFSET prev_pos, esi, PLAYER
-
-
-	mov esi, OFFSET prev_pos
-    mov dh, (Coords PTR [esi]).y
-    mov dl, (Coords PTR [esi]).x
-    call GoToXY
-    mov al, BLANK_SYMBOL
-    call WriteChar
-
-    ; write character at new position
-    mov esi, OFFSET new_pos
-    mov dh, (Coords PTR [esi]).y
-    mov dl, (Coords PTR [esi]).x
-    call GoToXY
-    mov al, PLAYER
-    call WriteChar
+	; player went successfully went "through" obstacle
+	call UpdateScore
 
 
-	; update player location tracker.
-	mov al, (Coords PTR [esi]).y
-	mov prev_pos.y, al
+	Draw:
+		; clear and redraw player.
+		mReplaceChar OFFSET curr_pos, OFFSET new_pos, PLAYER
 
-	mov al, (Coords PTR [esi]).x
-	mov prev_pos.x, al
+		; update player location tracker.
+		mov al, new_pos.y
+		mov curr_pos.y, al
 
 	ret
 
 DrawPlayer ENDP
 
 ;---------------------------------------------------------
-PlayerJump PROC USES eax esi ecx
+PlayerJump PROC USES eax esi ecx edx
 ;
 ; Applies "Jumping" effect to player avatar, moving
 ; it upward.
@@ -67,7 +57,7 @@ PlayerJump PROC USES eax esi ecx
 ;---------------------------------------------------------
 	
 	; save x coord. This really doesn't change.
-	mov al, prev_pos.x
+	mov al, curr_pos.x
 	mov new_pos.x, al
 
 	; implement "jump" over three consecutive frames
@@ -75,22 +65,29 @@ PlayerJump PROC USES eax esi ecx
 	; jump.
 	mov ecx, 03h
 	JumpLoop:
-		mov al, prev_pos.y
+		
+		; calculate new position after single frame of jump animation.
+		mov al, curr_pos.y
 		sub al, 01h
+
+		; determine if player will hit top border (cancel "jump" if so).
+		cmp al, top_border_start.y
+		jbe Quit
 
 		mov new_pos.y, al
 
 		; update player on screen.
-		mov esi, OFFSET new_pos
 		call DrawPlayer
 		loop JumpLoop
-	ret
+
+	Quit:
+		ret
 
 PlayerJump ENDP
 
 
 ;---------------------------------------------------------
-PlayerFall PROC USES eax esi
+PlayerFall PROC USES eax esi edx
 ;
 ; Applies "Gravity" effect to player avatar, moving
 ; it downward.
@@ -100,21 +97,22 @@ PlayerFall PROC USES eax esi
 ; Requires: Nothing.
 ;---------------------------------------------------------
 	
-	; save x coord. This really doesn't change.
-	mov al, prev_pos.x
-	mov new_pos.x, al
-
 	; calculate new height
-	mov al, prev_pos.y
+	mov al, curr_pos.y
 	add al, 01h
+
+	; determine if player will hit bottom border (end game if so).
+	cmp al, bottom_border_start.y
+	jae EndGame
 
 	mov new_pos.y, al
 
 	; update player on screen.
-	mov esi, OFFSET new_pos
 	call DrawPlayer
-
 	ret
+
+	EndGame:
+		call GameOver 
 
 PlayerFall ENDP
 
@@ -152,7 +150,7 @@ MovePlayer PROC PUBLIC
 		ret
 	
 	QuitGame:
-		; TODO
+		call GameOver
 		ret
 		
 MovePlayer ENDP

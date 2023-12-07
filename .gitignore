@@ -1,6 +1,11 @@
+# Non-Project Storage
 /Demo\ 1
 /Demo\ 2
+
+# Visual Studio Artifacts
 /Debug
 /.vs
-
 Project*.**
+
+# Mac OS artifacts
+/**/*/.DS_Store

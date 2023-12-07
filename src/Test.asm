@@ -129,7 +129,7 @@ TestPlayerWithObstacles PROC
     call SetupPlayer
 
        
-        TestPlayerWithObstacleLoop:
+    TestPlayerWithObstacleLoop:
         
         call MoveObstacles
         call ReadKey
@@ -140,7 +140,6 @@ TestPlayerWithObstacles PROC
 
         loop TestPlayerWithObstacleLoop
 
-    call ResetBackground
     ret
 TestPlayerWithObstacles ENDP
 
@@ -152,7 +151,7 @@ TestMain PROC PUBLIC
     ;call TestPlayerInEnvironment
     ;call TestObstacleCreation
     ;call TestObstacleMovement
-    call TestPlayerWithObstacles
+    ;call TestPlayerWithObstacles
 
     INVOKE ExitProcess, 0
 

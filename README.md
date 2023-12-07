@@ -1,14 +1,19 @@
 ## Table of Contents
 1. [Objective](#objective)
+   - [Demo](#demo)
 2. [Use](#use)
     - [How to Play](#how-to-play)
-4. [Inspirations](#inspirations)
+3. [Inspirations](#inspirations)
 
 ## Objective
 
 The objective of this project was to develop a game using MASM assembly and the [Irvine 32-bit Library](http://www.asmirvine.com/gettingStartedVS2019/index.htm). It was completed as a part of my coursework for my undergraduate degree.
 
 Built with MASM assembly and Visual Studio 2019 in 2023.
+
+### Demo
+
+[View full demo here!](https://drive.google.com/file/d/1g5wxw6NcA3YJAG0sLtf5FEhbDeP8ICxc/view?usp=sharing)
 
 ## Use
 

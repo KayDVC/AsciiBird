@@ -7,7 +7,7 @@
 
 ## Objective
 
-The objective of this project was to develop a game using MASM assembly and the [Irvine 32-bit Library](http://www.asmirvine.com/gettingStartedVS2019/index.htm). It was completed as a part of my coursework for my undergraduate degree.
+The objective of this project was to develop a game using MASM assembly and the [Irvine 32-bit Library](http://www.asmirvine.com/gettingStartedVS2019/index.htm) (Note: This link also contains a guide on how to setup Visual Studio 2019 for developing, assembling, and debugging MASM assembly). It was completed as a part of my coursework for my undergraduate degree.
 
 Built with MASM assembly and Visual Studio 2019 in 2023.
 
